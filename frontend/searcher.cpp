@@ -65,20 +65,20 @@ int main() {
     }
     bool salir= true;
     while(salir){
-    string texto = menu();
-    string mensaje = from +","+to + ","+ texto;
-    send(sockfd_B, mensaje.c_str(), mensaje.length(), 0);
-    char buffer[1024];  // Tamaño del búfer para el mensaje (ajústalo según tus necesidades)
-    ssize_t bytesReceived = recv(sockfd_B, buffer, sizeof(buffer), 0);
-    std::string receivedMessage(buffer, bytesReceived);
-    cout<<receivedMessage;
-    cout << "Desea salir (S/N): ";
-        char respuesta;
-        cin >> respuesta;
-        if (respuesta == 'S' || respuesta == 's') {
-            break; // Salir del bucle
-        }
-        limpiarPantalla();
+        string texto = menu();
+        string mensaje = from +","+to + ","+ texto;
+        send(sockfd_B, mensaje.c_str(), mensaje.length(), 0);
+        char buffer[1024];  // Tamaño del búfer para el mensaje (ajústalo según tus necesidades)
+        ssize_t bytesReceived = recv(sockfd_B, buffer, sizeof(buffer), 0);
+        std::string receivedMessage(buffer, bytesReceived);
+        cout<<receivedMessage;
+        cout << "Desea salir (S/N): ";
+            char respuesta;
+            cin >> respuesta;
+            if (respuesta == 'S' || respuesta == 's') {
+                break; // Salir del bucle
+            }
+            limpiarPantalla();
     }
 
     close(sockfd_B);

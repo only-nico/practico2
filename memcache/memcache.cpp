@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <queue>
 using namespace std;
 
 int main() {
@@ -57,11 +58,13 @@ int main() {
 
     // Convertir el mensaje en una cadena C++
     std::string receivedMessage(buffer, bytesReceived);
-    string mensaje=receivedMessage;
-    cout<<receivedMessage<<endl;
+    queue<pair<string,vector<string>>> cache;
+    pair<string,vector<string>> elemento1 = make_pair("hola", vector<string>{"info1", "info2", "info3"});
+    cache.push(elemento1);
+
+    pair<string,vector<string>> elemento2 = make_pair("chao", vector<string>{"info1", "info2", "info3"});
+    cache.push(elemento2);
     send(sockfd_A, mensaje.c_str(), mensaje.length(), 0);
-    // Realizar la comunicación con A y C
-    // Puedes usar send y recv para enviar y recibir datos
 
     // Cerrar los sockets de A y C
     close(sockfd_A);
