@@ -3,7 +3,7 @@
 #include <cstring>
 #include <sys/socket.h>
 #include <netinet/in.h>
-
+using namespace std;
 int main() {
     int sockfd_B;
     struct sockaddr_in client_B;
@@ -31,7 +31,10 @@ int main() {
 
     // Realizar la comunicación con B
     // Puedes usar send y recv para enviar y recibir datos
-
+    char buffer[1024];
+    ssize_t bytesPeticion = recv(sockfd_B, buffer, sizeof(buffer), 0);
+    string respuestaPeticion(buffer, bytesPeticion);
+    send(sockfd_B,respuestaPeticion.c_str(),respuestaPeticion.length(),0);
     // Cerrar el socket de B
     close(sockfd_B);
 
