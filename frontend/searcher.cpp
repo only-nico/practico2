@@ -4,6 +4,11 @@
 #include <fstream>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <chrono>
+
 using namespace std;
 string menu(){
     string mensaje="";
@@ -11,6 +16,7 @@ string menu(){
     cout<<endl;
     cout<<"Escriba el texto a buscar: ";
     getline(cin,mensaje);
+    cout << "MENSAJE INGRESADO: " << mensaje << endl << endl;
     return mensaje;
 }
 void limpiarPantalla(){
@@ -38,6 +44,41 @@ void cargarVariablesEnv() {
     }
     file.close();
 }
+
+void imprimirMensaje(string receivedMessage, chrono::steady_clock::duration diff){
+    cout << "RESPUESTA (";
+    std::cout << "Tiempo: " << std::chrono::duration <double, std::milli> (diff).count() << " ms, ";
+    //cout << "RECIBI DE B: " << receivedMessage<<endl;
+
+    std::vector<std::pair<std::string, int>> results;
+    std::string origen;
+    std::string temp;
+    std::istringstream ss(receivedMessage);
+
+    // Almacenar los elementos separados por ';'
+    while (std::getline(ss, temp, ';')) {
+        if (temp.find("(") != std::string::npos) {
+            temp.erase(0, 1); // Eliminar el paréntesis inicial
+            temp.erase(temp.size() - 1); // Eliminar el paréntesis final
+            std::istringstream pairStream(temp);
+            std::string filename;
+            int number;
+            pairStream >> filename;
+            pairStream.ignore(1); // Ignorar la coma
+            pairStream >> number;
+            results.emplace_back(filename, number);
+        } else {
+            origen = temp;
+        }
+    }
+
+    // Imprimir el origen y los resultados
+    std::cout << "ORIGEN=" << origen << ")" << endl << endl;
+    for (size_t i = 0; i < results.size(); ++i) {
+        cout << "\t" << i + 1 << ") " << results[i].first << results[i].second << std::endl;
+    }
+}
+
 int main() {
     cargarVariablesEnv();
     string from = getenv("FROM");
@@ -67,18 +108,33 @@ int main() {
     while(salir){
         string texto = menu();
         string mensaje = from +","+to + ","+ texto;
+
+        auto start = std::chrono::steady_clock::now();
+
         send(sockfd_B, mensaje.c_str(), mensaje.length(), 0);
         char buffer[1024];  // Tamaño del búfer para el mensaje (ajústalo según tus necesidades)
         ssize_t bytesReceived = recv(sockfd_B, buffer, sizeof(buffer), 0);
-        std::string receivedMessage(buffer, bytesReceived);
-        cout<<receivedMessage<<endl;
-        cout << "Desea salir (S/N): ";
-            char respuesta;
-            cin >> respuesta;
-            if (respuesta == 'S' || respuesta == 's') {
-                break; // Salir del bucle
-            }
-            limpiarPantalla();
+        string receivedMessage(buffer, bytesReceived);
+    
+        auto end = std::chrono::steady_clock::now();
+        
+        auto diff = end - start;
+
+        imprimirMensaje(receivedMessage, diff);
+
+
+
+        cout << "\nDesea salir (S/N): ";
+        char respuesta;
+        cin >> respuesta;
+        cout << "RESPUESTA: " << respuesta << endl;
+        if (respuesta == 'S' || respuesta == 's') {
+            cout << "SALIENDO" << endl;
+            break; // Salir del bucle
+        }
+        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        cin.clear();
+        limpiarPantalla();
     }
 
     close(sockfd_B);
