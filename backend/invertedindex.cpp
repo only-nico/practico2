@@ -145,8 +145,24 @@
 #include <fstream>
 #include <vector>
 #include <map>
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
 
 using namespace std;
+
+struct Contexto {
+    std::string txtToSerarch;
+    std::string tiempo;
+    std::string ori;
+    bool isFound;
+    std::vector<std::pair<std::string, int>> resultados;
+};
+
+struct Mensaje {
+    std::string origen;
+    std::string destino;
+    Contexto contexto;
+};
 
 map<string, vector<pair<string, int>>> cargarIndex(string filename) {
     map<string, vector<pair<string, int>>> result;
@@ -189,23 +205,45 @@ map<string, vector<pair<string, int>>> cargarIndex(string filename) {
     return result;
 }
 
-std::vector<std::string> buscarPalabra(string palabra, map<string, vector<pair<string, int>>>  invertedIndexMap)  {
+void buscarPalabra(Mensaje& mensaje, map<string, vector<pair<string, int>>>  invertedIndexMap, string texto)  {
     // Imprime el contenido del mapa
     vector<std::string> retornar;
 
     for (auto const& [key, val] : invertedIndexMap) {
-        if(key == palabra){
-            string r;
+        if(key == texto){
+            mensaje.contexto.isFound = true;
             for (auto const& [filename, number] : val) {
-                r = "(" + filename + ", " + to_string(number) + ")";
-                retornar.push_back(r);
+                mensaje.contexto.resultados.push_back({filename, number});
             }
-            return retornar;
         }
     }
-    return std::vector<std::string>();
 }
 
+// Definir una función para serializar un Contexto a un json
+void to_json(json& j, const Contexto& c) {
+    j = json{{"txtToSerarch", c.txtToSerarch}, {"tiempo", c.tiempo}, {"ori", c.ori}, {"isFound", c.isFound}, {"resultados", c.resultados}};
+}
+
+// Definir una función para serializar un Mensaje a un json
+void to_json(json& j, const Mensaje& m) {
+    j = json{{"origen", m.origen}, {"destino", m.destino}, {"contexto", m.contexto}};
+}
+
+// Definir una función para deserializar un json a un Contexto
+void from_json(const json& j, Contexto& c) {
+    j.at("txtToSerarch").get_to(c.txtToSerarch);
+    j.at("tiempo").get_to(c.tiempo);
+    j.at("ori").get_to(c.ori);
+    j.at("isFound").get_to(c.isFound);
+    j.at("resultados").get_to(c.resultados);
+}
+
+// Definir una función para deserializar un json a un Mensaje
+void from_json(const json& j, Mensaje& m) {
+    j.at("origen").get_to(m.origen);
+    j.at("destino").get_to(m.destino);
+    j.at("contexto").get_to(m.contexto);
+}
 
 int main() {
 
@@ -250,25 +288,37 @@ int main() {
 
             cout << "RECIBI DE B: " << respuestaPeticion << endl;
 
-            istringstream ss(respuestaPeticion);
-            string from, to, mensaje;
-            getline(ss, from, ',');  // Lee el valor "/desde" y lo almacena en 'from'
-            getline(ss, to, ',');  // Lee el valor "/hacia" y lo almacena en 'to'
-            getline(ss, mensaje);
+            json j = json::parse(respuestaPeticion);
 
+            Mensaje mensaje = j.get<Mensaje>();
 
-            std::vector<std::string> ocurrencias = buscarPalabra(mensaje, invertedIndex);
+            // istringstream ss(respuestaPeticion);
+            string from, to, texto;
+            // getline(ss, from, ',');  // Lee el valor "/desde" y lo almacena en 'from'
+            // getline(ss, to, ',');  // Lee el valor "/hacia" y lo almacena en 'to'
+            // getline(ss, mensaje);
 
-            string mensajeEnviar = "";
+            from = mensaje.origen;
+            to = mensaje.destino;
+            texto = mensaje.contexto.txtToSerarch;
+            mensaje.contexto.ori = "BACKEND";
+            
 
-            cout << "OCURRENCIAS: ";
-            for (string ocurrencia : ocurrencias) {
-                cout << ocurrencia << " ";
-                mensajeEnviar += ocurrencia + ";"; // Agrega un ';' después de cada ocurrencia
-            }
+            buscarPalabra(mensaje, invertedIndex, texto);
+            // mensaje.origen = 
 
-            cout << "DEBERIA ENVIAR A B: " << mensajeEnviar.c_str() << endl; 
-            send(connection_B, mensajeEnviar.c_str(), strlen(mensajeEnviar.c_str()), 0);
+            j = mensaje;
+
+            // string mensajeEnviar = "";
+
+            // cout << "OCURRENCIAS: ";
+            // for (string ocurrencia : ocurrencias) {
+            //     cout << ocurrencia << " ";
+            //     mensajeEnviar += ocurrencia + ";"; // Agrega un ';' después de cada ocurrencia
+            // }
+
+            cout << "DEBERIA ENVIAR A B: " << j.dump(4).c_str() << endl; 
+            send(connection_B, j.dump(4).c_str(), j.dump(4).length(), 0);
 
         }
 
