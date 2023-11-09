@@ -135,7 +135,7 @@
 //     return 0;
 // }
 
-
+#include <set>
 #include <iostream>
 #include <unistd.h>
 #include <cstring>
@@ -164,60 +164,147 @@ struct Mensaje {
     Contexto contexto;
 };
 
-map<string, vector<pair<string, int>>> cargarIndex(string filename) {
-    map<string, vector<pair<string, int>>> result;
-    ifstream file(filename);
-    string line;
-    while (getline(file, line)) {
-        string key = line.substr(0, line.find(":"));
-        string value = line.substr(line.find(":") + 1);
-        vector<pair<string, int>> files;
+std::map<std::string, std::vector<std::pair<std::string, int>>> cargarIndex(const std::string& filename) {
+    std::map<std::string, std::vector<std::pair<std::string, int>>> result;
+    std::ifstream file(filename);
+    std::string line;
+
+    while (std::getline(file, line)) {
+        std::string key = line.substr(0, line.find(":"));
+        std::string value = line.substr(line.find(":") + 1);
+
+        std::vector<std::pair<std::string, int>> files;
         size_t start = 0;
         size_t end = 0;
-        if (value.find(";") == string::npos) {
-            string file = value.substr(1, value.size() - 2);
-            size_t semicolon = file.find(";");
-            string filename = file.substr(0, semicolon);
-            int number = stoi(file.substr(semicolon + 1));
-            files.push_back(make_pair(filename, number));
-        } else {
-            while ((end = value.find(");", start)) != string::npos) {
-                string file = value.substr(start + 1, end - start - 1);
+
+        // Verifica si hay al menos un archivo en la línea
+        if (value.find(";") != std::string::npos) {
+            while ((end = value.find(");", start)) != std::string::npos) {
+                std::string file = value.substr(start + 1, end - start);
                 size_t semicolon = file.find(";");
-                string filename = file.substr(0, semicolon);
-                int number = stoi(file.substr(semicolon + 1));
-                files.push_back(make_pair(filename, number));
+                std::string filename = file.substr(0, semicolon);
+                int number = std::stoi(file.substr(semicolon + 1));
+                files.push_back(std::make_pair(filename, number));
                 start = end + 2;
             }
         }
+
+        // Procesa el último valor sin necesidad de ;)
+        if (start < value.size()) {
+            std::string file = value.substr(start + 1, value.size() - start - 2);
+            size_t semicolon = file.find(";");
+            std::string filename = file.substr(0, semicolon);
+            int number = std::stoi(file.substr(semicolon + 1));
+            files.push_back(std::make_pair(filename, number));
+        }
+
         result[key] = files;
     }
 
     file.close();
+/*
+    for (const auto& [key, val] : result) {
+        std::cout << key << ": ";
+        for (const auto& [filename, number] : val) {
+            std::cout << "(" << filename << ", " << number << ") ";
+        }
+        std::cout << std::endl;
+    }*/
 
-    // for (auto const& [key, val] : result) {
-    //     cout << key << ": ";
-    //     for (auto const& [filename, number] : val) {
-    //         cout << "(" << filename << ", " << number << ") ";
-    //     }
-    //     cout << endl;
-    // }
     return result;
 }
-
-void buscarPalabra(Mensaje& mensaje, map<string, vector<pair<string, int>>>  invertedIndexMap, string texto)  {
     // Imprime el contenido del mapa
-    vector<std::string> retornar;
 
-    for (auto const& [key, val] : invertedIndexMap) {
-        if(key == texto){
-            mensaje.contexto.isFound = true;
-            for (auto const& [filename, number] : val) {
-                mensaje.contexto.resultados.push_back({filename, number});
+void buscarPalabra(Mensaje& mensaje, const std::map<std::string, std::vector<std::pair<std::string, int>>>& invertedIndexMap, const std::string& texto) {
+    // Tokenizar el texto en palabras
+    std::istringstream palabrasStream(texto);
+    std::vector<std::string> palabrasABuscar;
+    std::string palabraBuscada;
+    while (palabrasStream >> palabraBuscada) {
+        palabrasABuscar.push_back(palabraBuscada);
+    }
+
+    // Verificar si todas las palabras están presentes
+    bool todasLasPalabrasPresentes = true;
+
+    // Crear un conjunto de archivos para la primera palabra como punto de referencia
+    std::set<std::string> archivosEnReferencia;
+
+    if (!palabrasABuscar.empty()) {
+        const auto& primerPalabra = palabrasABuscar.front();
+        auto it = invertedIndexMap.find(primerPalabra);
+
+        if (it != invertedIndexMap.end()) {
+            for (const auto& [archivo, _] : it->second) {
+                archivosEnReferencia.insert(archivo);
             }
+        } else {
+            todasLasPalabrasPresentes = false;
         }
+    } else {
+        todasLasPalabrasPresentes = false;
+    }
+
+    // Realiza la búsqueda y conteo de palabras solo si todas las palabras están presentes
+    if (todasLasPalabrasPresentes) {
+        std::map<std::string, int> apariciones;
+
+        for (const auto& palabra : palabrasABuscar) {
+            const auto& listaApariciones = invertedIndexMap.at(palabra);
+
+            // Crear un conjunto de archivos para la palabra actual
+            std::set<std::string> archivosParaPalabra;
+
+            for (const auto& [archivo, _] : listaApariciones) {
+                archivosParaPalabra.insert(archivo);
+            }
+
+            // Intersección con el conjunto de archivos de referencia
+            std::set<std::string> interseccion;
+            std::set_intersection(
+                archivosEnReferencia.begin(), archivosEnReferencia.end(),
+                archivosParaPalabra.begin(), archivosParaPalabra.end(),
+                std::inserter(interseccion, interseccion.begin())
+            );
+
+            // Actualizar el conjunto de archivos de referencia con la intersección
+            archivosEnReferencia = interseccion;
+        }
+
+        // Actualiza el contexto del mensaje
+        mensaje.contexto.isFound = !archivosEnReferencia.empty();
+        mensaje.contexto.resultados.clear();
+
+        // Ordena las apariciones de mayor a menor antes de agregarlas al contexto
+        std::vector<std::pair<std::string, int>> aparicionesOrdenadas;
+        for (const auto& archivo : archivosEnReferencia) {
+            int totalApariciones = 0;
+
+            for (const auto& palabra : palabrasABuscar) {
+                const auto& listaApariciones = invertedIndexMap.at(palabra);
+                for (const auto& [arch, cantidad] : listaApariciones) {
+                    if (arch == archivo) {
+                        totalApariciones += cantidad;
+                    }
+                }
+            }
+
+            aparicionesOrdenadas.push_back({archivo, totalApariciones});
+        }
+
+        std::sort(aparicionesOrdenadas.begin(), aparicionesOrdenadas.end(),
+                [](const auto& a, const auto& b) {
+                    return a.second > b.second;
+                });
+
+        mensaje.contexto.resultados = aparicionesOrdenadas;
+    } else {
+        // Si alguna palabra no está en el índice, o no hay palabras, no hace nada
+        mensaje.contexto.isFound = false;
+        mensaje.contexto.resultados.clear();
     }
 }
+
 
 // Definir una función para serializar un Contexto a un json
 void to_json(json& j, const Contexto& c) {
@@ -302,8 +389,6 @@ int main() {
             to = mensaje.destino;
             texto = mensaje.contexto.txtToSerarch;
             mensaje.contexto.ori = "BACKEND";
-            
-
             buscarPalabra(mensaje, invertedIndex, texto);
             // mensaje.origen = 
 

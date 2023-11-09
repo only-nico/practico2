@@ -302,8 +302,9 @@ int main() {
             perror("Error al aceptar la conexión de A");
             continue;
         }
-
+        vector<Contexto> cache;
         while (true) {
+            
             char buffer[1024]; // Tamaño del búfer para el mensaje (ajústalo según tus necesidades)
             ssize_t bytesReceived = recv(connection_A, buffer, sizeof(buffer), 0);
             string receivedMessage(buffer, bytesReceived);
@@ -335,21 +336,34 @@ int main() {
             getline(ss, to, ',');  // Lee el valor "/hacia" y lo almacena en 'to'
             getline(ss, mensaje);
             */
+            bool encontradoEnCache = false;
+            for (const auto& contexto : cache) {
+                cout<<contexto.txtToSerarch<<endl;
+                if (contexto.txtToSerarch == texto) {
+                    // Encontrado en la caché
+                    encontradoEnCache = true;
+                    Mensaje mensaje;
+                    mensaje.origen = host;
+                    mensaje.destino = front;
+                    mensaje.contexto = contexto;
+                    json j = mensaje;
 
-            if(false){ // buscar cache
-
+                    cout << "ENVIANDO A A: " << j.dump(4) << endl;
+                    send(connection_A, j.dump(4).c_str(), j.dump(4).length(), 0);
+                    cout << "ENVIADO!!!" << endl;
+                }
             }
-            else{ // buscar backend
+
+            // Si no se encontró en la caché, buscar en el backend
+            if (!encontradoEnCache) {
+                Mensaje mensaje;
                 mensaje.origen = host;
                 mensaje.destino = back;
                 mensaje.contexto.isFound = false;
-
+                mensaje.contexto.txtToSerarch=texto;
                 json j = mensaje;
-
-                // string peticion= host+","+back+","+mensaje;
-
                 cout << "ENVIANDO A C: " << j.dump(4) << endl;
-                send(sockfd_C,j.dump(4).c_str(),j.dump(4).length(),0);
+                send(sockfd_C, j.dump(4).c_str(), j.dump(4).length(), 0);
                 cout << "ENVIADO!!!" << endl;
 
                 ssize_t bytesPeticion = recv(sockfd_C, buffer, sizeof(buffer), 0);
@@ -360,26 +374,32 @@ int main() {
                 j = json::parse(respuestaPeticion);
                 mensaje = j.get<Mensaje>();
 
+                // Actualizar la caché
+                if (cache.size() >= 4) {
+                    cache.pop_back();
+                    mensaje.contexto.ori="cache";
+                    cache.push_back(mensaje.contexto);
+                } else {
+                    mensaje.contexto.ori="cache";
+                    cache.push_back(mensaje.contexto);
+                }
+
                 mensaje.origen = host;
                 mensaje.destino = front;
 
-
                 j = mensaje;
-                cout << "ENVIANDO A A: " << j.dump(4).c_str()  << endl;
+                cout << "ENVIANDO A A: " << j.dump(4).c_str() << endl;
 
                 send(connection_A, j.dump(4).c_str(), j.dump(4).length(), 0);
 
                 cout << "ENVIADO" << endl;
             }
-
-
         }
-
         // Cerrar el socket de A
         close(connection_A);
     }
-
+    
     // Cerrar el socket principal de A al final del programa
-    close(sockfd_A);
+    close(sockfd_C);
     return 0;
 }
