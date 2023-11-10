@@ -88,11 +88,11 @@ void from_json(const json& j, Mensaje& m) {
     j.at("contexto").get_to(m.contexto);
 }
 
-void imprimirMensaje(Mensaje mensaje){
+void imprimirMensaje(Mensaje mensaje, int topk){
     cout << "Respuesta: (tiempo = " << mensaje.contexto.tiempo << ", origen=" << mensaje.contexto.ori << ")\n";
 
     if(mensaje.contexto.resultados.size() != 0)
-        for (int i = 0; i < mensaje.contexto.resultados.size(); i++) {
+        for (int i = 0; i < topk; i++) {
             std::cout << "\t" << i + 1 << ") texto: " << mensaje.contexto.resultados[i].first << ", puntaje: " << mensaje.contexto.resultados[i].second << std::endl;
         }
     else
@@ -104,6 +104,8 @@ int main() {
     cargarVariablesEnv();
     string from = getenv("FROM");
     string to = getenv("TO");
+    string top= getenv("TOPK");
+    int topk= stoi(top);
     from.pop_back();
     int sockfd_B;
     struct sockaddr_in server_B;
@@ -158,7 +160,7 @@ int main() {
 
         mensaje.contexto.tiempo =   to_string(::chrono::duration_cast<std::chrono::nanoseconds>(diff).count()) + " ns.";
 
-        imprimirMensaje(mensaje);
+        imprimirMensaje(mensaje,topk);
 
 
 
