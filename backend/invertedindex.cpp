@@ -1,140 +1,3 @@
-// #include <iostream>
-// #include <unistd.h>
-// #include <cstring>
-// #include <sys/socket.h>
-// #include <netinet/in.h>
-// #include <sstream>
-// #include <fstream>
-// #include <vector>
-// #include <map>
-
-// using namespace std;
-
-// map<string, vector<pair<string, int>>> cargarIndex(string filename) {
-//     map<string, vector<pair<string, int>>> result;
-//     ifstream file(filename);
-//     string line;
-//     while (getline(file, line)) {
-//         string key = line.substr(0, line.find(":"));
-//         string value = line.substr(line.find(":") + 1);
-//         vector<pair<string, int>> files;
-//         size_t start = 0;
-//         size_t end = 0;
-//         if (value.find(";") == string::npos) {
-//             string file = value.substr(1, value.size() - 2);
-//             size_t semicolon = file.find(";");
-//             string filename = file.substr(0, semicolon);
-//             int number = stoi(file.substr(semicolon + 1));
-//             files.push_back(make_pair(filename, number));
-//         } else {
-//             while ((end = value.find(");", start)) != string::npos) {
-//                 string file = value.substr(start + 1, end - start - 1);
-//                 size_t semicolon = file.find(";");
-//                 string filename = file.substr(0, semicolon);
-//                 int number = stoi(file.substr(semicolon + 1));
-//                 files.push_back(make_pair(filename, number));
-//                 start = end + 2;
-//             }
-//         }
-//         result[key] = files;
-//     }
-
-//     file.close();
-
-//     // for (auto const& [key, val] : result) {
-//     //     cout << key << ": ";
-//     //     for (auto const& [filename, number] : val) {
-//     //         cout << "(" << filename << ", " << number << ") ";
-//     //     }
-//     //     cout << endl;
-//     // }
-//     return result;
-// }
-
-// std::vector<std::string> buscarPalabra(string palabra, map<string, vector<pair<string, int>>>  invertedIndexMap)  {
-//     // Imprime el contenido del mapa
-//     vector<std::string> retornar;
-
-//     for (auto const& [key, val] : invertedIndexMap) {
-//         if(key == palabra){
-//             string r;
-//             for (auto const& [filename, number] : val) {
-//                 r = "(" + filename + ", " + to_string(number) + ")";
-//                 retornar.push_back(r);
-//             }
-//             return retornar;
-//         }
-//     }
-//     return std::vector<std::string>();
-// }
-
-
-// int main() {
-
-//     map<string, vector<pair<string, int>>>invertedIndex = cargarIndex("file.idx");
-
-//     while (true) {
-//         int sockfd_B;
-//         struct sockaddr_in client_B;
-
-//         // Crear un socket para B
-//         sockfd_B = socket(AF_INET, SOCK_STREAM, 0);
-//         if (sockfd_B == -1) {
-//             perror("Error al crear el socket para B");
-//             return 1;
-//         }
-
-//         // Configurar la dirección y el puerto del servidor C para B
-//         client_B.sin_family = AF_INET;
-//         client_B.sin_port = htons(3002); // El mismo puerto que B
-//         client_B.sin_addr.s_addr = INADDR_ANY;
-
-//         // Enlazar el socket de B al puerto
-//         bind(sockfd_B, (struct sockaddr *)&client_B, sizeof(client_B));
-
-//         // Escuchar conexiones entrantes desde B
-//         listen(sockfd_B, 5);
-
-//         // Aceptar la conexión de B
-//         sockfd_B = accept(sockfd_B, nullptr, nullptr);
-
-//         // Realizar la comunicación con B
-//         // Puedes usar send y recv para enviar y recibir datos
-//         char buffer[1024];
-//         ssize_t bytesPeticion = recv(sockfd_B, buffer, sizeof(buffer), 0);
-//         string respuestaPeticion(buffer, bytesPeticion);
-
-//         cout << "RECIBI DE B: " << respuestaPeticion << endl;
-
-//         // string mensajeRecibido = respuestaPeticion;
-//         istringstream ss(respuestaPeticion);
-//         string from, to, mensaje;
-//         getline(ss, from, ',');  // Lee el valor "/desde" y lo almacena en 'from'
-//         getline(ss, to, ',');  // Lee el valor "/hacia" y lo almacena en 'to'
-//         getline(ss, mensaje);
-
-//         cout << from << "->" << to << ":" << mensaje << endl;
-
-//         std::vector<std::string> ocurrencias = buscarPalabra(mensaje, invertedIndex);
-
-//         string mensajeEnviar = "";
-
-//         cout << "OCURRENCIAS: ";
-//         for (string ocurrencia : ocurrencias) {
-//             cout << ocurrencia << " ";
-//             mensajeEnviar += ocurrencia + ";"; // Agrega un ';' después de cada ocurrencia
-//         }
-
-//         cout << "DEBERIA ENVIAR A B: " << mensajeEnviar.c_str() << endl; 
-//         send(sockfd_B, mensajeEnviar.c_str(), strlen(mensajeEnviar.c_str()), 0);
-
-
-//         // Cerrar el socket de B
-//         close(sockfd_B);
-//     }
-//     return 0;
-// }
-
 #include <set>
 #include <iostream>
 #include <unistd.h>
@@ -167,6 +30,12 @@ struct Mensaje {
 std::map<std::string, std::vector<std::pair<std::string, int>>> cargarIndex(const std::string& filename) {
     std::map<std::string, std::vector<std::pair<std::string, int>>> result;
     std::ifstream file(filename);
+
+    if (!file) {
+        cerr << "No se pudo abrir el archivo .idx" << endl;
+        exit(1);
+    }
+
     std::string line;
 
     while (std::getline(file, line)) {
@@ -215,7 +84,7 @@ std::map<std::string, std::vector<std::pair<std::string, int>>> cargarIndex(cons
 }
     // Imprime el contenido del mapa
 
-void buscarPalabra(Mensaje& mensaje, const std::map<std::string, std::vector<std::pair<std::string, int>>>& invertedIndexMap, const std::string& texto) {
+void buscarPalabra(Mensaje& mensaje, const std::map<std::string, std::vector<std::pair<std::string, int>>>& invertedIndexMap, const std::string& texto, int topk) {
     // Tokenizar el texto en palabras
     std::istringstream palabrasStream(texto);
     std::vector<std::string> palabrasABuscar;
@@ -224,32 +93,44 @@ void buscarPalabra(Mensaje& mensaje, const std::map<std::string, std::vector<std
         palabrasABuscar.push_back(palabraBuscada);
     }
 
+    // for (string palabra: palabrasABuscar){
+    //     cout << palabra << endl;
+    // }
+    vector<std::string> palabrasABuscar2 = palabrasABuscar;
     // Verificar si todas las palabras están presentes
     bool todasLasPalabrasPresentes = true;
 
     // Crear un conjunto de archivos para la primera palabra como punto de referencia
     std::set<std::string> archivosEnReferencia;
 
-    if (!palabrasABuscar.empty()) {
+    while (!palabrasABuscar.empty()) {
         const auto& primerPalabra = palabrasABuscar.front();
+
+        cout << "buscando: " << primerPalabra << endl;
         auto it = invertedIndexMap.find(primerPalabra);
 
         if (it != invertedIndexMap.end()) {
             for (const auto& [archivo, _] : it->second) {
+                cout << archivo << endl;
                 archivosEnReferencia.insert(archivo);
             }
         } else {
             todasLasPalabrasPresentes = false;
+            break;
         }
-    } else {
-        todasLasPalabrasPresentes = false;
+        palabrasABuscar.erase(palabrasABuscar.begin());
     }
 
     // Realiza la búsqueda y conteo de palabras solo si todas las palabras están presentes
+
+    for(string palabra: palabrasABuscar2){
+        cout << palabra << endl;
+    }
+
     if (todasLasPalabrasPresentes) {
         std::map<std::string, int> apariciones;
 
-        for (const auto& palabra : palabrasABuscar) {
+        for (const auto& palabra : palabrasABuscar2) {
             const auto& listaApariciones = invertedIndexMap.at(palabra);
 
             // Crear un conjunto de archivos para la palabra actual
@@ -277,10 +158,11 @@ void buscarPalabra(Mensaje& mensaje, const std::map<std::string, std::vector<std
 
         // Ordena las apariciones de mayor a menor antes de agregarlas al contexto
         std::vector<std::pair<std::string, int>> aparicionesOrdenadas;
+        int i = 1;
         for (const auto& archivo : archivosEnReferencia) {
             int totalApariciones = 0;
 
-            for (const auto& palabra : palabrasABuscar) {
+            for (const auto& palabra : palabrasABuscar2) {
                 const auto& listaApariciones = invertedIndexMap.at(palabra);
                 for (const auto& [arch, cantidad] : listaApariciones) {
                     if (arch == archivo) {
@@ -288,8 +170,11 @@ void buscarPalabra(Mensaje& mensaje, const std::map<std::string, std::vector<std
                     }
                 }
             }
-
-            aparicionesOrdenadas.push_back({archivo, totalApariciones});
+            if(i <= topk){
+                cout << "i: " << i << endl;
+                aparicionesOrdenadas.push_back({archivo, totalApariciones});
+                i++;
+            }
         }
 
         std::sort(aparicionesOrdenadas.begin(), aparicionesOrdenadas.end(),
@@ -332,9 +217,39 @@ void from_json(const json& j, Mensaje& m) {
     j.at("contexto").get_to(m.contexto);
 }
 
-int main() {
+void cargarVariablesEnv() {
+    const char* envFile = "backend.env";
+    ifstream file(envFile);
+    if (!file) {
+        cerr << "No se pudo abrir el archivo .env" << endl;
+        exit(1);
+    }
+    string line;
+    while (getline(file, line)) {
+        size_t equalsPos = line.find('=');
+        if (equalsPos != string::npos) {
+            string key = line.substr(0, equalsPos);
+            string value = line.substr(equalsPos + 1);
+            setenv(key.c_str(), value.c_str(), 1);
+        }
+    }
+    file.close();
+}
 
-    map<string, vector<pair<string, int>>>invertedIndex = cargarIndex("file.idx");
+int main() {
+    cargarVariablesEnv();
+    string from = getenv("FROM");
+    string to = getenv("TO");
+    string file = getenv("FILE");
+    int topk = stoi(getenv("TOPK"));
+    // cout << topk;
+
+    if(from == to){
+        cout << "FROM == TO" << endl;
+        return 1;
+    }
+
+    map<string, vector<pair<string, int>>>invertedIndex = cargarIndex(file);
 
     int sockfd_B;
     struct sockaddr_in client_B;
@@ -366,9 +281,6 @@ int main() {
         }
 
         while(true){
-
-            // Realizar la comunicación con B
-            // Puedes usar send y recv para enviar y recibir datos
             char buffer[1024];
             ssize_t bytesPeticion = recv(connection_B, buffer, sizeof(buffer), 0);
             string respuestaPeticion(buffer, bytesPeticion);
@@ -379,28 +291,15 @@ int main() {
 
             Mensaje mensaje = j.get<Mensaje>();
 
-            // istringstream ss(respuestaPeticion);
             string from, to, texto;
-            // getline(ss, from, ',');  // Lee el valor "/desde" y lo almacena en 'from'
-            // getline(ss, to, ',');  // Lee el valor "/hacia" y lo almacena en 'to'
-            // getline(ss, mensaje);
 
             from = mensaje.origen;
             to = mensaje.destino;
             texto = mensaje.contexto.txtToSerarch;
             mensaje.contexto.ori = "BACKEND";
-            buscarPalabra(mensaje, invertedIndex, texto);
-            // mensaje.origen = 
+            buscarPalabra(mensaje, invertedIndex, texto, topk);
 
             j = mensaje;
-
-            // string mensajeEnviar = "";
-
-            // cout << "OCURRENCIAS: ";
-            // for (string ocurrencia : ocurrencias) {
-            //     cout << ocurrencia << " ";
-            //     mensajeEnviar += ocurrencia + ";"; // Agrega un ';' después de cada ocurrencia
-            // }
 
             cout << "DEBERIA ENVIAR A B: " << j.dump(4).c_str() << endl; 
             send(connection_B, j.dump(4).c_str(), j.dump(4).length(), 0);

@@ -88,13 +88,12 @@ void from_json(const json& j, Mensaje& m) {
     j.at("contexto").get_to(m.contexto);
 }
 
-void imprimirMensaje(Mensaje mensaje, int topk){
+void imprimirMensaje(Mensaje mensaje){
     cout << "Respuesta: (tiempo = " << mensaje.contexto.tiempo << ", origen=" << mensaje.contexto.ori << ")\n";
 
-    if(mensaje.contexto.resultados.size() != 0)
-        for (int i = 0; i < topk; i++) {
+    if(mensaje.contexto.isFound == true)
+        for (int i = 0; i < mensaje.contexto.resultados.size(); i++) 
             std::cout << "\t" << i + 1 << ") texto: " << mensaje.contexto.resultados[i].first << ", puntaje: " << mensaje.contexto.resultados[i].second << std::endl;
-        }
     else
         cout << "No se encontraron coincidencias" << endl;
     
@@ -104,11 +103,16 @@ int main() {
     cargarVariablesEnv();
     string from = getenv("FROM");
     string to = getenv("TO");
-    string top= getenv("TOPK");
-    int topk= stoi(top);
     from.pop_back();
+    to.pop_back();
+
     int sockfd_B;
     struct sockaddr_in server_B;
+
+    if(from == to){
+        cout << "FROM == TO" << endl;
+        return 1;
+    }
 
     // Crear un socket para B
     sockfd_B = socket(AF_INET, SOCK_STREAM, 0);
@@ -138,9 +142,6 @@ int main() {
         // Convertir el objeto Mensaje a un json
         json j = mensaje;
 
-        // Mostrar el json como un string
-        // std::cout << j.dump(4) << std::endl;
-
         auto start = std::chrono::steady_clock::now();
         string mensaje2 = from +","+to + ","+ texto;
 
@@ -160,9 +161,7 @@ int main() {
 
         mensaje.contexto.tiempo =   to_string(::chrono::duration_cast<std::chrono::nanoseconds>(diff).count()) + " ns.";
 
-        imprimirMensaje(mensaje,topk);
-
-
+        imprimirMensaje(mensaje);
 
         cout << "\nDesea salir (S/N): ";
         char respuesta;
@@ -172,9 +171,17 @@ int main() {
             cout << "SALIENDO" << endl;
             break; // Salir del bucle
         }
-        cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-        cin.clear();
-        limpiarPantalla();
+        else if(respuesta == 'N' || respuesta == 'n'){
+            cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+            cin.clear();
+            limpiarPantalla();
+        }
+        else{
+            cout << "Respuesta invalida." << endl;
+            break;
+        }
+            
+
     }
 
     close(sockfd_B);
